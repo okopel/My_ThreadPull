@@ -96,7 +96,7 @@ ThreadPool *tpCreate(int numOfThreads) {
  * @return 0 if succes
  */
 int tpInsertTask(ThreadPool *threadPool, void (*computeFunc)(void *), void *param) {
-    if (threadPool->status == NO_RUNNING || (computeFunc == NULL)) {
+    if ((threadPool->status == NO_RUNNING) || (computeFunc == NULL)) {
         return ERR_EXIT;
     }
     Task *t = (Task *) malloc(sizeof(Task));
@@ -115,7 +115,7 @@ int tpInsertTask(ThreadPool *threadPool, void (*computeFunc)(void *), void *para
         writeErrorAndFreeMemAndExit(threadPool, 9);
     }
     //notify the threads that task added because there are in wait mode
-    //the signal sent just if the qeueue is empty becouse this is the case that thread isnt busy
+    //the signal sent just if the queue is empty because this is the case that thread isnt busy
     if (isTasksListEmp) {
         if ((pthread_cond_broadcast(&(threadPool->notify))) != 0) {
             writeErrorAndFreeMemAndExit(threadPool, 10);
@@ -149,9 +149,11 @@ void tpDestroy(ThreadPool *threadPool, int shouldWaitForTasks) {
         }
     }
     threadPool->status = NO_RUNNING;
-    //wakeup the threads
-    if ((pthread_cond_broadcast(&(threadPool->notify))) != 0) {
-        writeErrorAndFreeMemAndExit(threadPool, 13);
+    //wakeup the threads (just if the queue is empty->there are waiting threads)
+    if (osIsQueueEmpty(threadPool->tasks)) {
+        if ((pthread_cond_broadcast(&(threadPool->notify))) != 0) {
+            writeErrorAndFreeMemAndExit(threadPool, 13);
+        }
     }
 
     //waiting to the threads to be done
@@ -180,7 +182,7 @@ void freeMem(ThreadPool *threadPool) {
         return;
     }
     //let the threads wakeup
-    if (threadPool->status == RUNNING) {
+    if ((threadPool->status == RUNNING) && (osIsQueueEmpty(threadPool->tasks))) {
         if ((pthread_cond_broadcast(&(threadPool->notify))) != 0) {
             writeError(16);
         }
@@ -223,7 +225,7 @@ void *waitingThread(void *param) {
     }
     Task *myTask;
     //the loop will go until tpDestroy will exit the thread
-    //there isnt busy waiting because pthread_wait in the loop
+    //there isn't busy waiting because pthread_wait in the loop
     while (1) {
         if ((pthread_mutex_lock(&threadPool->mutex)) != 0) {
             writeErrorAndFreeMemAndExit(threadPool, 21);
