@@ -212,6 +212,7 @@ void freeMem(ThreadPool *threadPool) {
         writeError(20);
     }
     if (threadPool->threads != NULL) {
+
         free(threadPool->threads);
         threadPool->threads = NULL;
     }
@@ -236,7 +237,8 @@ void *waitingThread(void *param) {
                 if ((pthread_mutex_unlock(&(threadPool->mutex))) != 0) {
                     writeErrorAndFreeMemAndExit(threadPool, 22);
                 }
-                pthread_exit(NULL);
+                return NULL;
+                //pthread_exit(NULL);
             }
             //we have to run but this time we dont have task so wait until signal
             if (osIsQueueEmpty(threadPool->tasks) && (threadPool->status == RUNNING)) {
